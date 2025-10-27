@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
+    <title>Local Dictation</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Arial; margin: 0; }
+      .wrap { padding: 16px; max-width: 960px; margin: 0 auto; }
+      .title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+      .subtitle { color: #555; margin-bottom: 16px; }
+      .indicator { margin: 8px 0; color: #888; }
+      textarea { width: 100%; height: 300px; font-size: 14px; padding: 8px; }
+      .pill { display: inline-block; padding: 6px 10px; border-radius: 9999px; background: #f1f5f9; margin-right: 8px; color: #111; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="title">Local Dictation</div>
+      <div class="subtitle">Hold Space to record. Release to transcribe locally.</div>
+      <div class="indicator" id="status">Ready</div>
+      <div>
+        <span class="pill">16 kHz mono</span>
+        <span class="pill">WAV PCM</span>
+        <span class="pill">Local Whisper</span>
+      </div>
+      <textarea id="out" placeholder="Transcriptions appear here..."></textarea>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

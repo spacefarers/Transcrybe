@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+bin/
+dist/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Env / editor
+.env
+.env.*
+.idea/
+.vscode/
+
+# Temporary
+*.tmp
+*.swp
+
+# Model files
+*.bin
