@@ -79,8 +79,8 @@ struct TranscrybeApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        // Settings window - only created when explicitly opened via openWindow()
-        WindowGroup(id: "settings") {
+        // Singleton Settings scene - platform handles window management
+        Settings {
             AppRootView(
                 permissionManager: permissionManager,
                 audioRecorder: audioRecorder,
@@ -95,13 +95,83 @@ struct TranscrybeApp: App {
                 .environmentObject(audioRecorder)
                 .environmentObject(transcriptionService)
                 .environmentObject(keyboardMonitor)
+                .frame(minWidth: 500, minHeight: 600)
         }
-        .windowStyle(.hiddenTitleBar)
-        .onChange(of: settingsWindowManager.shouldShowSettings) { oldValue, newValue in
-            if newValue && !oldValue {
-                openWindow(id: "settings")
+
+        // Menu bar item
+        MenuBarExtra("Transcrybe", systemImage: "microphone.fill") {
+            VStack(spacing: 8) {
+                Button(action: {
+                    NSApp.activate(ignoringOtherApps: true)
+                    // Find and focus settings window, or trigger keyboard shortcut to create it
+                    if let settingsWindow = NSApplication.shared.windows.first(where: { $0.title.contains("Settings") || $0.title.contains("Preferences") }) {
+                        settingsWindow.makeKeyAndOrderFront(nil)
+                    } else {
+                        // Trigger the keyboard shortcut to open Settings
+                        let event = NSEvent.keyEvent(
+                            with: .keyDown,
+                            location: .zero,
+                            modifierFlags: [.command],
+                            timestamp: Date().timeIntervalSince1970,
+                            windowNumber: 0,
+                            context: nil,
+                            characters: ",",
+                            charactersIgnoringModifiers: ",",
+                            isARepeat: false,
+                            keyCode: 43
+                        )
+                        NSApplication.shared.sendEvent(event!)
+                    }
+                }) {
+                    Label("Settings", systemImage: "gear")
+                }
+
+                Divider()
+
+                Button(action: {
+                    NSApplication.shared.terminate(nil)
+                }) {
+                    Label("Quit Transcrybe", systemImage: "power")
+                }
+            }
+            .padding(8)
+            .onAppear {
+                // Open settings window on first launch (menu bar is always visible on app launch)
+                if isFirstLaunch {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        // Trigger the keyboard shortcut to open Settings
+                        let event = NSEvent.keyEvent(
+                            with: .keyDown,
+                            location: .zero,
+                            modifierFlags: [.command],
+                            timestamp: Date().timeIntervalSince1970,
+                            windowNumber: 0,
+                            context: nil,
+                            characters: ",",
+                            charactersIgnoringModifiers: ",",
+                            isARepeat: false,
+                            keyCode: 43
+                        )
+                        NSApplication.shared.sendEvent(event!)
+                    }
+                }
             }
         }
+
+        // Floating recording indicator window
+        Window("Recording Indicator", id: "recording-indicator") {
+            RecordingIndicatorWindowContent(
+                audioRecorder: audioRecorder,
+                transcriptionService: transcriptionService,
+                permissionManager: permissionManager,
+                windowManager: indicatorWindowManager
+            )
+            .frame(width: 80, height: 80)
+            .background(Color.clear)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.bottom)
         .onChange(of: audioRecorder.isRecording) { oldValue, newValue in
             keyboardMonitor.isRecording = newValue
         }
@@ -131,49 +201,6 @@ struct TranscrybeApp: App {
                 .keyboardShortcut("q", modifiers: .command)
             }
         }
-
-        // Menu bar item
-        MenuBarExtra("Transcrybe", systemImage: "microphone.fill") {
-            VStack(spacing: 8) {
-                Button(action: {
-                    NSApp.activate(ignoringOtherApps: true)
-                    openWindow(id: "settings")
-                }) {
-                    Label("Settings", systemImage: "gear")
-                }
-
-                Divider()
-
-                Button(action: {
-                    NSApplication.shared.terminate(nil)
-                }) {
-                    Label("Quit Transcrybe", systemImage: "power")
-                }
-            }
-            .padding(8)
-            .onAppear {
-                // Open settings window on first launch (menu bar is always visible on app launch)
-                if isFirstLaunch {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        settingsWindowManager.shouldShowSettings = true
-                    }
-                }
-            }
-        }
-
-        // Floating recording indicator window
-        Window("Recording Indicator", id: "recording-indicator") {
-            RecordingIndicatorWindowContent(
-                audioRecorder: audioRecorder,
-                transcriptionService: transcriptionService,
-                windowManager: indicatorWindowManager
-            )
-            .frame(width: 80, height: 80)
-            .background(Color.clear)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentSize)
-        .defaultPosition(.bottom)
     }
 }
 

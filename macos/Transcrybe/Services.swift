@@ -522,12 +522,16 @@ class KeyboardMonitor: NSObject, ObservableObject {
             }
         }
 
-        let hotKeyPressed = evaluateHotKey(type: type, modifiers: modifiers, keyCode: keyCode)
+        // Only evaluate function key on flagsChanged events
+        // This prevents arrow keys and other regular keys from triggering hotkey detection
+        if type == .flagsChanged {
+            let isFunctionNowPressed = modifiers.contains(.function)
 
-        if hotKeyPressed != isFunctionPressed {
-            DispatchQueue.main.async { [weak self] in
-                self?.isFunctionPressed = hotKeyPressed
-                self?.logger.info("Hotkey \(hotKeyPressed ? "PRESSED" : "RELEASED")")
+            if isFunctionNowPressed != isFunctionPressed {
+                DispatchQueue.main.async { [weak self] in
+                    self?.isFunctionPressed = isFunctionNowPressed
+                    self?.logger.info("Function key \(isFunctionNowPressed ? "PRESSED" : "RELEASED")")
+                }
             }
         }
 
@@ -554,42 +558,6 @@ class KeyboardMonitor: NSObject, ObservableObject {
         }
 
         return nsFlags
-    }
-
-    private func evaluateHotKey(type: CGEventType, modifiers: NSEvent.ModifierFlags, keyCode: UInt16?) -> Bool {
-        guard let hotKeyManager = hotKeyManager else {
-            return modifiers.contains(.function)
-        }
-
-        let recordedKeyCode = hotKeyManager.recordedKeyCode
-        let recordedModifiers = hotKeyManager.recordedModifiers
-
-        if recordedKeyCode == 0 {
-            return hotKeyManager.isHotKeyPressed(flags: modifiers, keyCode: nil)
-        }
-
-        switch type {
-        case .keyDown:
-            guard let keyCode = keyCode else { return false }
-            return hotKeyManager.isHotKeyPressed(flags: modifiers, keyCode: keyCode)
-
-        case .keyUp:
-            guard let keyCode = keyCode else { return false }
-            if keyCode == recordedKeyCode {
-                return false
-            }
-            // Key up for a different key – maintain state if modifiers still held
-            return isFunctionPressed && recordedModifiers.isSubset(of: modifiers)
-
-        case .flagsChanged:
-            if !recordedModifiers.isSubset(of: modifiers) {
-                return false
-            }
-            return isFunctionPressed
-
-        default:
-            return isFunctionPressed
-        }
     }
 
     deinit {

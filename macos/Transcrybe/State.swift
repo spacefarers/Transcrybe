@@ -289,176 +289,23 @@ class PermissionManager: NSObject, ObservableObject {
 // MARK: - Hot Key Manager
 
 class HotKeyManager: NSObject, ObservableObject {
-    @Published var recordedModifiers: NSEvent.ModifierFlags = .function
-    @Published var recordedKeyCode: UInt16 = 0
-    @Published var recordedKeyDisplay: String = "fn"
+    /// Hotkey is fixed to the Function key only
+    private let activationModifiers: NSEvent.ModifierFlags = .function
+    private let activationKeyCode: UInt16 = 0 // 0 = modifier-only
 
     private let logger = Logger(subsystem: "com.transcryb.hotkey", category: "manager")
-    private let userDefaults = UserDefaults.standard
-    private let hotkeyModifiersKey = "HotKeyModifiers"
-    private let hotkeyKeyCodeKey = "HotKeyKeyCode"
-    private let hotkeyDisplayKey = "HotKeyDisplay"
 
     override init() {
         super.init()
-        loadHotKeyFromDefaults()
-    }
-
-    // MARK: - Persistence
-
-    private func loadHotKeyFromDefaults() {
-        if let savedModifiers = userDefaults.value(forKey: hotkeyModifiersKey) as? UInt {
-            recordedModifiers = NSEvent.ModifierFlags(rawValue: savedModifiers)
-        }
-
-        if let savedKeyCode = userDefaults.value(forKey: hotkeyKeyCodeKey) as? Int {
-            recordedKeyCode = UInt16(savedKeyCode)
-        } else {
-            recordedKeyCode = 0
-        }
-
-        if let savedDisplay = userDefaults.string(forKey: hotkeyDisplayKey) {
-            recordedKeyDisplay = savedDisplay
-        }
-
-        logger.info("Loaded hotkey from defaults: \(self.recordedKeyDisplay)")
-    }
-
-    func saveHotKey(modifiers: NSEvent.ModifierFlags, keyCode: UInt16, display: String) {
-        self.recordedModifiers = modifiers
-        self.recordedKeyCode = keyCode
-        self.recordedKeyDisplay = display
-
-        userDefaults.setValue(modifiers.rawValue, forKey: hotkeyModifiersKey)
-        userDefaults.setValue(Int(keyCode), forKey: hotkeyKeyCodeKey)
-        userDefaults.setValue(display, forKey: hotkeyDisplayKey)
-
-        logger.info("Saved hotkey: \(display)")
+        logger.info("HotKeyManager initialized - Using Function key as activation hotkey")
     }
 
     // MARK: - Hotkey Detection
 
-    /// Check if the current event flags match the configured hotkey (for keyboard tap)
+    /// Check if the current event flags match the Function key activation
     func isHotKeyPressed(flags: NSEvent.ModifierFlags, keyCode: UInt16?) -> Bool {
-        if recordedKeyCode == 0 {
-            // Modifier-only hotkey (e.g., Function key)
-            return recordedModifiers.isSubset(of: flags)
-        }
-
-        guard let keyCode = keyCode else {
-            return false
-        }
-
-        return keyCode == recordedKeyCode && recordedModifiers.isSubset(of: flags)
-    }
-
-    func resetToDefault() {
-        saveHotKey(modifiers: .function, keyCode: 0, display: "fn")
-        logger.info("Reset hotkey to default (Function)")
-    }
-}
-
-// MARK: - HotKey Recording Controller
-
-final class HotKeyRecordingController {
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
-
-    private var onUpdate: ((NSEvent.ModifierFlags, UInt16?, String?, NSEvent.SpecialKey?) -> Void)?
-    private var onCommit: ((NSEvent.ModifierFlags, UInt16?, String?, NSEvent.SpecialKey?) -> Void)?
-
-    func begin(
-        onUpdate: @escaping (NSEvent.ModifierFlags, UInt16?, String?, NSEvent.SpecialKey?) -> Void,
-        onCommit: @escaping (NSEvent.ModifierFlags, UInt16?, String?, NSEvent.SpecialKey?) -> Void
-    ) {
-        self.onUpdate = onUpdate
-        self.onCommit = onCommit
-
-        teardown()
-
-        let mask =
-            (CGEventMask(1) << CGEventMask(CGEventType.flagsChanged.rawValue)) |
-            (CGEventMask(1) << CGEventMask(CGEventType.keyDown.rawValue)) |
-            (CGEventMask(1) << CGEventMask(CGEventType.keyUp.rawValue))
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: { _, type, event, userInfo in
-                guard let userInfo = userInfo else {
-                    return Unmanaged.passUnretained(event)
-                }
-                let selfRef = Unmanaged<HotKeyRecordingController>.fromOpaque(userInfo).takeUnretainedValue()
-                selfRef.handle(event: event, type: type)
-                return Unmanaged.passUnretained(event)
-            },
-            userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
-        ) else {
-            return
-        }
-
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        if let source = runLoopSource {
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-        }
-        CGEvent.tapEnable(tap: tap, enable: true)
-    }
-
-    func end() {
-        teardown()
-        onUpdate = nil
-        onCommit = nil
-    }
-
-    private func teardown() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
-        }
-        eventTap = nil
-        runLoopSource = nil
-    }
-
-    private func handle(event: CGEvent, type: CGEventType) {
-        // Build NSEvent-like flags set from CGEventFlags, including Function
-        var flags: NSEvent.ModifierFlags = []
-        let cg = event.flags
-        if cg.contains(.maskCommand) { flags.insert(.command) }
-        if cg.contains(.maskAlternate) { flags.insert(.option) }
-        if cg.contains(.maskShift) { flags.insert(.shift) }
-        if cg.contains(.maskControl) { flags.insert(.control) }
-        if cg.contains(.maskSecondaryFn) { flags.insert(.function) }
-
-        let keyCode: UInt16? = (type == .keyDown || type == .keyUp)
-            ? UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-            : nil
-
-        // Try to infer characters and a specialKey for display
-        var chars: String?
-        var specialKey: NSEvent.SpecialKey?
-        if let nsEvent = NSEvent(cgEvent: event) {
-            chars = nsEvent.charactersIgnoringModifiers
-            specialKey = nsEvent.specialKey
-        }
-
-        switch type {
-        case .keyDown:
-            onUpdate?(flags, keyCode, chars, specialKey)
-            onCommit?(flags, keyCode, chars, specialKey)   // commit on first keyDown
-        case .flagsChanged:
-            onUpdate?(flags, nil, nil, nil)
-            // If user releases all modifiers without typing a key, commit a modifier-only hotkey
-            if flags.isEmpty {
-                onCommit?(flags, nil, nil, nil)
-            }
-        default:
-            break
-        }
+        // Only check if Function modifier is pressed (we ignore keyCode since it's modifier-only)
+        return activationModifiers.isSubset(of: flags)
     }
 }
 
