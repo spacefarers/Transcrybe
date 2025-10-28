@@ -1,8 +1,8 @@
 //
-//  TranscrybeApp.swift
+//  App.swift
 //  Transcrybe
 //
-//  Created by Michael Yang on 10/27/25.
+//  Entry point and main application orchestration
 //
 
 import SwiftUI
@@ -54,6 +54,10 @@ class SettingsWindowManager: ObservableObject {
     func recordSettingsWindowID(_ windowNumber: Int) {
         settingsWindowID = windowNumber
     }
+
+    func clearSettingsWindowID() {
+        settingsWindowID = nil
+    }
 }
 
 @main
@@ -93,8 +97,31 @@ struct TranscrybeApp: App {
                 .environmentObject(keyboardMonitor)
         }
         .windowStyle(.hiddenTitleBar)
+        .onChange(of: settingsWindowManager.shouldShowSettings) { oldValue, newValue in
+            if newValue && !oldValue {
+                openWindow(id: "settings")
+            }
+        }
+        .onChange(of: audioRecorder.isRecording) { oldValue, newValue in
+            keyboardMonitor.isRecording = newValue
+        }
         .onChange(of: keyboardMonitor.isFunctionPressed) { oldValue, newValue in
             handleFunctionKeyChange(oldValue: oldValue, newValue: newValue)
+        }
+        .onChange(of: keyboardMonitor.isEscapePressed) { oldValue, newValue in
+            if newValue {
+                // Escape key pressed - cancel everything
+                if audioRecorder.isRecording {
+                    // Stop recording immediately
+                    _ = audioRecorder.stopRecording()
+                    didActuallyStartRecording = false
+                    // Hide indicator immediately
+                    indicatorWindowManager.updateWindowVisibility(false)
+                } else if transcriptionService.isTranscribing || transcriptionService.isAwaitingInsertion {
+                    // Cancel transcription or insertion
+                    transcriptionService.cancelTranscription()
+                }
+            }
         }
         .commands {
             CommandGroup(replacing: .appTermination) {
@@ -110,11 +137,7 @@ struct TranscrybeApp: App {
             VStack(spacing: 8) {
                 Button(action: {
                     NSApp.activate(ignoringOtherApps: true)
-                    // Try to focus existing window; if it doesn't exist or isn't visible, open a new one
-                    if !settingsWindowManager.focusSettingsWindowIfOpen() {
-                        settingsWindowManager.shouldShowSettings = true
-                        openWindow(id: "settings")
-                    }
+                    openWindow(id: "settings")
                 }) {
                     Label("Settings", systemImage: "gear")
                 }
@@ -128,6 +151,14 @@ struct TranscrybeApp: App {
                 }
             }
             .padding(8)
+            .onAppear {
+                // Open settings window on first launch (menu bar is always visible on app launch)
+                if isFirstLaunch {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        settingsWindowManager.shouldShowSettings = true
+                    }
+                }
+            }
         }
 
         // Floating recording indicator window
@@ -146,77 +177,7 @@ struct TranscrybeApp: App {
     }
 }
 
-struct AppRootView: View {
-    @ObservedObject var permissionManager: PermissionManager
-    @ObservedObject var audioRecorder: AudioRecorder
-    @ObservedObject var transcriptionService: TranscriptionService
-    @ObservedObject var keyboardMonitor: KeyboardMonitor
-    @ObservedObject var settingsWindowManager: SettingsWindowManager
-    @ObservedObject var modelManager: ModelManager
-    @ObservedObject var hotKeyManager: HotKeyManager
-    @ObservedObject var launchOnStartupManager: LaunchOnStartupManager
-    @Binding var isFirstLaunch: Bool
-    @State private var hasStartedPermissionFlow = false
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
-
-    var body: some View {
-        Group {
-            if permissionManager.isPermissionFlowComplete {
-                ContentView(
-                    audioRecorder: audioRecorder,
-                    transcriptionService: transcriptionService,
-                    keyboardMonitor: keyboardMonitor,
-                    modelManager: modelManager,
-                    hotKeyManager: hotKeyManager,
-                    launchOnStartupManager: launchOnStartupManager
-                )
-                    .environmentObject(permissionManager)
-                    .environmentObject(audioRecorder)
-                    .environmentObject(transcriptionService)
-                    .environmentObject(keyboardMonitor)
-            } else {
-                PermissionFlowView(permissionManager: permissionManager)
-            }
-        }
-        .onAppear {
-            // Record the window number so we can track it
-            if let window = NSApplication.shared.windows.first(where: { !$0.title.isEmpty && $0.level != .mainMenu }) {
-                settingsWindowManager.recordSettingsWindowID(window.windowNumber)
-
-                // On first launch, dismiss the window if settings shouldn't show
-                if isFirstLaunch && !settingsWindowManager.shouldShowSettings {
-                    dismissWindow(id: "settings")
-                    isFirstLaunch = false
-                }
-            }
-        }
-        .task {
-            if !hasStartedPermissionFlow {
-                hasStartedPermissionFlow = true
-                permissionManager.startPermissionFlow()
-            }
-        }
-        .onDisappear {
-            settingsWindowManager.shouldShowSettings = false
-            isFirstLaunch = false
-        }
-        .onChange(of: permissionManager.isPermissionFlowComplete) { oldValue, newValue in
-            if newValue && !oldValue {
-                // Permissions just granted - reinitialize keyboard monitor, set hotkey manager, and load default model
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    keyboardMonitor.setHotKeyManager(hotKeyManager)
-                    keyboardMonitor.reinitialize()
-
-                    // Load default model if installed, so transcription service is ready
-                    if modelManager.isModelInstalled("base") {
-                        transcriptionService.loadModel("base", from: modelManager)
-                    }
-                }
-            }
-        }
-    }
-}
+// MARK: - Function Key Handler
 
 extension TranscrybeApp {
     private func handleFunctionKeyChange(oldValue: Bool, newValue: Bool) {
