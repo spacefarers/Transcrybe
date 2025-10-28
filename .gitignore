@@ -5,6 +5,8 @@ node_modules/
 bin/
 dist/
 out/
+macos/build/
+macos/DerivedData/
 
 # Logs
 npm-debug.log*
@@ -24,6 +26,14 @@ Thumbs.db
 # Temporary
 *.tmp
 *.swp
+*~
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcarchive
+*.playground
 
 # Model files
 *.bin
