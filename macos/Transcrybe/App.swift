@@ -12,11 +12,15 @@ import Combine
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     static let settingsWindowOpenedNotification = NSNotification.Name("settingsWindowOpened")
+    var accessibilityManager: AccessibilityManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Start as accessory app (invisible in Command+Tab)
         NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
+
+        // Request Accessibility permissions once at startup
+        accessibilityManager?.requestAccessibilityPermissions()
     }
 }
 
@@ -67,16 +71,22 @@ struct TranscrybeApp: App {
     @StateObject private var permissionManager = PermissionManager()
     @StateObject private var audioRecorder = AudioRecorder()
     @StateObject private var indicatorWindowManager = IndicatorWindowManager()
-    @StateObject private var transcriptionService = TranscriptionService()
+    @StateObject private var transcriptionService: TranscriptionService
     @StateObject private var keyboardMonitor = KeyboardMonitor()
     @StateObject private var accessibilityManager = AccessibilityManager()
     @StateObject private var settingsWindowManager = SettingsWindowManager()
-    @StateObject private var modelManager = ModelManager()
+    @StateObject private var modelManager: ModelManager
     @StateObject private var hotKeyManager = HotKeyManager()
     @StateObject private var launchOnStartupManager = LaunchOnStartupManager()
     @State private var didActuallyStartRecording = false
     @State private var isFirstLaunch = true
     @Environment(\.openWindow) private var openWindow
+
+    init() {
+        let modelManager = ModelManager()
+        _modelManager = StateObject(wrappedValue: modelManager)
+        _transcriptionService = StateObject(wrappedValue: TranscriptionService(modelManager: modelManager))
+    }
 
     var body: some Scene {
         // Singleton Settings scene - platform handles window management
@@ -136,6 +146,10 @@ struct TranscrybeApp: App {
             }
             .padding(8)
             .onAppear {
+                // Request Accessibility permissions once at app startup
+                appDelegate.accessibilityManager = accessibilityManager
+                accessibilityManager.requestAccessibilityPermissions()
+
                 // Open settings window on first launch (menu bar is always visible on app launch)
                 if isFirstLaunch {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

@@ -70,7 +70,7 @@ struct AppRootView: View {
 
                     // Load default model if installed, so transcription service is ready
                     if modelManager.isModelInstalled("base") {
-                        transcriptionService.loadModel("base", from: modelManager)
+                        transcriptionService.loadModel("base")
                     }
                 }
             }
@@ -277,7 +277,7 @@ struct ContentView: View {
 
                 // Check if selected model is installed, but don't auto-download
                 if modelManager.isModelInstalled(selectedModelId) {
-                    transcriptionService.loadModel(selectedModelId, from: modelManager)
+                    transcriptionService.loadModel(selectedModelId)
                 }
             }
         }
@@ -291,7 +291,7 @@ struct ContentView: View {
     private func handleModelSelection(_ modelId: String) {
         // Only load if already installed, otherwise just wait for user to click download
         if modelManager.isModelInstalled(modelId) {
-            transcriptionService.loadModel(modelId, from: modelManager)
+            transcriptionService.loadModel(modelId)
         }
     }
 }
@@ -486,6 +486,9 @@ struct RecordingIndicatorWindowContent: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
+        .onAppear {
+            windowManager.updateWindowVisibility(shouldShowIndicator)
+        }
         .onChange(of: audioRecorder.isRecording) { _, newValue in
             if newValue {
                 windowManager.updateWindowVisibility(true)

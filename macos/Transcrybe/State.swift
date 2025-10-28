@@ -28,6 +28,20 @@ struct PermissionChecker {
         _ = AXIsProcessTrustedWithOptions(options)
     }
 
+    /// Check current microphone authorization status
+    static func microphoneAuthorizationStatus() -> AVAuthorizationStatus {
+        AVCaptureDevice.authorizationStatus(for: .audio)
+    }
+
+    /// Request microphone access (triggers system prompt if needed)
+    static func requestMicrophoneAccess(completion: @escaping (Bool) -> Void) {
+        AVCaptureDevice.requestAccess(for: .audio) { granted in
+            DispatchQueue.main.async {
+                completion(granted)
+            }
+        }
+    }
+
     /// Open accessibility settings in System Settings
     static func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -39,26 +53,6 @@ struct PermissionChecker {
     static func openMicrophoneSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
             NSWorkspace.shared.open(url)
-        }
-    }
-
-    /// Test if microphone is accessible
-    static func testMicrophoneAccess(completion: @escaping (Bool) -> Void) {
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("mic_test_\(UUID().uuidString).wav")
-        let audioSettings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: 16000.0,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsNonInterleaved: false
-        ]
-
-        do {
-            _ = try AVAudioRecorder(url: tempURL, settings: audioSettings)
-            completion(true)
-            try? FileManager.default.removeItem(at: tempURL)
-        } catch {
-            completion(false)
         }
     }
 }
@@ -73,17 +67,38 @@ class PermissionPoller {
         completion: @escaping (Bool) -> Void
     ) {
         var attempts = 0
-        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            attempts += 1
+
+        // Use a recursive DispatchQueue.main.asyncAfter loop instead of a Timer.
+        // This is more resilient to run loop mode changes when modal system
+        // prompts (like the Accessibility permission dialog) are active.
+        func check() {
             let trusted = PermissionChecker.isAccessibilityTrusted()
-            if trusted || attempts >= maxAttempts {
-                timer.invalidate()
+            attempts += 1
+
+            // If trusted, complete successfully
+            if trusted {
                 DispatchQueue.main.async {
-                    completion(trusted)
+                    completion(true)
                 }
+                return
+            }
+
+            // If max attempts reached, fail
+            if attempts >= maxAttempts {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+
+            // Otherwise, schedule the next check
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
+                check()
             }
         }
-        RunLoop.main.add(timer, forMode: .common)
+
+        // Start the first check
+        check()
     }
 }
 
@@ -185,83 +200,47 @@ class PermissionManager: NSObject, ObservableObject {
     // MARK: - Microphone Permission
 
     private func checkMicrophonePermissionSync() -> Bool {
-        PermissionChecker.testMicrophoneAccess { _ in }
-        // Note: synchronous check for initialization
-        var result = false
-        PermissionChecker.testMicrophoneAccess { granted in
-            result = granted
-        }
-        // Give it a moment to complete
-        Thread.sleep(forTimeInterval: 0.1)
-        return result
+        PermissionChecker.microphoneAuthorizationStatus() == .authorized
     }
 
     private func requestMicrophonePermissionFlow(completion: @escaping () -> Void) {
-        logger.info("Step 1/2: Requesting Microphone permission...")
+        logger.info("Step 1/2: Requesting Microphone permission via system prompt...")
 
-        let alert = NSAlert()
-        alert.messageText = "Microphone Permission Required"
-        alert.informativeText = "Transcrybe needs access to your microphone to record audio for transcription.\n\nClick 'Grant' to enable microphone access in System Settings, or 'Quit' to exit the app."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Grant")
-        alert.addButton(withTitle: "Quit")
+        PermissionChecker.requestMicrophoneAccess { [weak self] granted in
+            guard let self = self else { return }
 
-        let response = alert.runModal()
-
-        if response == .alertFirstButtonReturn {
-            PermissionChecker.openMicrophoneSettings()
-            PermissionChecker.testMicrophoneAccess { [weak self] granted in
-                if granted {
-                    self?.logger.info("✓ Microphone permission granted")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self?.currentPermissionStep += 1
-                        self?.requestNextPermission(completion: completion)
-                    }
-                } else {
-                    self?.logger.error("✗ Microphone permission denied")
-                    self?.showPermissionDeniedAlert(for: "Microphone")
-                }
+            if granted {
+                self.logger.info("✓ Microphone permission granted")
+                self.hasMicrophonePermission = true
+                self.currentPermissionStep += 1
+                self.requestNextPermission(completion: completion)
+            } else {
+                self.logger.error("✗ Microphone permission denied")
+                self.showPermissionDeniedAlert(for: "Microphone")
             }
-        } else {
-            logger.info("User chose to quit during microphone permission request")
-            quitApp()
         }
     }
 
     // MARK: - Accessibility Permission
 
     private func requestAccessibilityPermissionFlow(completion: @escaping () -> Void) {
-        logger.info("Step 2/2: Requesting Accessibility permission...")
+        logger.info("Step 2/2: Requesting Accessibility permission via system prompt...")
 
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
-        alert.informativeText = "Transcrybe needs accessibility permission to monitor the Function key globally and insert transcribed text at the cursor automatically.\n\nClick 'Grant' to enable accessibility access in System Settings, or 'Quit' to exit the app."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Grant")
-        alert.addButton(withTitle: "Quit")
+        PermissionChecker.requestAccessibilityTrust()
 
-        let response = alert.runModal()
+        // Poll for accessibility trust
+        PermissionPoller.pollAccessibilityTrust { [weak self] trusted in
+            guard let self = self else { return }
 
-        if response == .alertFirstButtonReturn {
-            PermissionChecker.requestAccessibilityTrust()
-            PermissionChecker.openAccessibilitySettings()
-
-            // Poll for accessibility trust
-            PermissionPoller.pollAccessibilityTrust { [weak self] trusted in
-                if trusted {
-                    self?.logger.info("✓ Accessibility permission granted")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self?.currentPermissionStep += 1
-                        self?.requestNextPermission(completion: completion)
-                    }
-                } else {
-                    self?.logger.error("✗ Accessibility permission denied")
-                    self?.showPermissionDeniedAlert(for: "Accessibility")
-                }
+            if trusted {
+                self.logger.info("✓ Accessibility permission granted")
+                self.hasAccessibilityPermission = true
+                self.currentPermissionStep += 1
+                self.requestNextPermission(completion: completion)
+            } else {
+                self.logger.error("✗ Accessibility permission denied")
+                self.showPermissionDeniedAlert(for: "Accessibility")
             }
-        } else {
-            logger.info("User chose to quit during accessibility permission request")
-            quitApp()
         }
     }
 
@@ -270,11 +249,16 @@ class PermissionManager: NSObject, ObservableObject {
     private func showPermissionDeniedAlert(for permission: String) {
         let alert = NSAlert()
         alert.messageText = "Permission Not Granted"
-        alert.informativeText = "\(permission) permission was not granted. Transcrybe cannot function without this permission.\n\nThe app will now quit."
-        alert.alertStyle = .critical
-        alert.addButton(withTitle: "Quit")
+        alert.informativeText = "\(permission) permission was not granted. Transcrybe cannot function without this permission.\n\nPlease grant \(permission) access in System Settings, then relaunch Transcrybe."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Settings")
 
         alert.runModal()
+        if permission == "Microphone" {
+            PermissionChecker.openMicrophoneSettings()
+        } else if permission == "Accessibility" {
+            PermissionChecker.openAccessibilitySettings()
+        }
         quitApp()
     }
 

@@ -18,7 +18,7 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var isRecording = false
     @Published var recordingURL: URL?
 
-    private let logger = Logger(subsystem: "com.transcryb.audio", category: "recorder")
+    private let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "recorder")
     private var audioRecorder: AVAudioRecorder?
 
     override init() {
@@ -128,7 +128,7 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
 // MARK: - Whisper Wrapper
 
 class WhisperContext {
-    private let logger = Logger(subsystem: "com.transcryb.whisper", category: "wrapper")
+    private let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "wrapper")
     private var modelPath: String
     private var bridge: WhisperBridge?
 
@@ -174,7 +174,7 @@ class WhisperContext {
 
 class AudioConverter {
     static func convertAudioToFloat32(from audioFileURL: URL) -> [Float]? {
-        let logger = Logger(subsystem: "com.transcryb.whisper", category: "converter")
+        let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "converter")
 
         do {
             logger.info("Reading audio file: \(audioFileURL.lastPathComponent)")
@@ -252,10 +252,21 @@ class TranscriptionService: ObservableObject {
     @Published var errorMessage: String?
     @Published var isAwaitingInsertion = false
 
-    private let logger = Logger(subsystem: "com.transcryb.transcription", category: "service")
+    private let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "service")
     private var whisperContext: WhisperContext?
     private var modelPath: String?
     private var isCancelled = false
+    private let modelManager: ModelManager
+    private let userDefaults: UserDefaults
+    private let selectedModelKey = "SelectedModel"
+    private let defaultModelId = "base"
+
+    init(modelManager: ModelManager, userDefaults: UserDefaults = .standard) {
+        self.modelManager = modelManager
+        self.userDefaults = userDefaults
+        logger.info("TranscriptionService initializing")
+        initializeOnLaunch()
+    }
 
     func setModelPath(_ path: String) {
         guard FileManager.default.fileExists(atPath: path) else {
@@ -275,9 +286,13 @@ class TranscriptionService: ObservableObject {
         }
     }
 
-    func loadModel(_ modelId: String, from modelManager: ModelManager) {
+    func loadModel(_ modelId: String) {
         let modelPath = modelManager.getModelPath(modelId)
         setModelPath(modelPath)
+        if whisperContext != nil {
+            userDefaults.setValue(modelId, forKey: selectedModelKey)
+            logger.info("Selected model '\(modelId)' stored in user defaults")
+        }
     }
 
     func cancelTranscription() {
@@ -288,6 +303,15 @@ class TranscriptionService: ObservableObject {
             self.transcribedText = ""
         }
         logger.info("Transcription cancelled by user")
+    }
+
+    private func deleteRecordingFile(_ fileURL: URL) {
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+            logger.info("✓ Recording file cleaned up: \(fileURL.lastPathComponent)")
+        } catch {
+            logger.error("✗ Failed to delete recording file: \(error.localizedDescription)")
+        }
     }
 
     func transcribeAudio(fileURL: URL, completion: @escaping (String?, Error?) -> Void) {
@@ -303,6 +327,7 @@ class TranscriptionService: ObservableObject {
                 self.errorMessage = "Whisper model not loaded. Please specify the model path."
                 self.isTranscribing = false
             }
+            deleteRecordingFile(fileURL)
             completion(nil, error)
             return
         }
@@ -323,6 +348,7 @@ class TranscriptionService: ObservableObject {
                     self.isTranscribing = false
                 }
                 self.logger.info("Recording rejected: duration \(String(format: "%.2f", duration))s (minimum 0.5s required)")
+                self.deleteRecordingFile(fileURL)
                 completion(nil, error)
                 return
             }
@@ -337,6 +363,7 @@ class TranscriptionService: ObservableObject {
             DispatchQueue.main.async {
                 self.isTranscribing = false
             }
+            self.deleteRecordingFile(fileURL)
             completion(nil, nsError)
             return
         }
@@ -361,6 +388,7 @@ class TranscriptionService: ObservableObject {
                     self?.isAwaitingInsertion = false
                 }
                 self?.logger.error("Audio conversion failed")
+                self?.deleteRecordingFile(fileURL)
                 completion(nil, error)
                 return
             }
@@ -371,13 +399,14 @@ class TranscriptionService: ObservableObject {
                     self?.isTranscribing = false
                     self?.isAwaitingInsertion = false
                 }
+                self?.deleteRecordingFile(fileURL)
                 return
             }
 
             self?.logger.info("Audio converted successfully. Samples: \(audioSamples.count)")
 
             // Transcribe using Whisper framework
-            guard let transcribedText = context.transcribe(audioSamples: audioSamples) else {
+            guard let transcribedTextRaw = context.transcribe(audioSamples: audioSamples) else {
                 let error = NSError(
                     domain: "TranscriptionService",
                     code: -3,
@@ -389,9 +418,13 @@ class TranscriptionService: ObservableObject {
                     self?.isAwaitingInsertion = false
                 }
                 self?.logger.error("Transcription failed")
+                self?.deleteRecordingFile(fileURL)
                 completion(nil, error)
                 return
             }
+
+            // Trim leading/trailing whitespace from transcription
+            let transcribedText = transcribedTextRaw.trimmingCharacters(in: .whitespaces)
 
             // Check if cancelled after transcribing
             if self?.isCancelled == true {
@@ -399,10 +432,12 @@ class TranscriptionService: ObservableObject {
                     self?.isTranscribing = false
                     self?.isAwaitingInsertion = false
                 }
+                self?.deleteRecordingFile(fileURL)
                 return
             }
 
             self?.logger.info("Transcription completed successfully")
+            self?.deleteRecordingFile(fileURL)
             DispatchQueue.main.async {
                 self?.transcribedText = transcribedText
                 self?.isTranscribing = false
@@ -410,6 +445,33 @@ class TranscriptionService: ObservableObject {
             }
             completion(transcribedText, nil)
         }
+    }
+
+    private func initializeOnLaunch() {
+        let savedModelID = userDefaults.string(forKey: selectedModelKey)
+        let modelToLoad: String?
+
+        if let savedModelID = savedModelID, modelManager.isModelInstalled(savedModelID) {
+            modelToLoad = savedModelID
+        } else if modelManager.isModelInstalled(defaultModelId) {
+            modelToLoad = defaultModelId
+        } else {
+            // Fall back to any installed model if available
+            modelToLoad = ModelManager.supportedModels
+                .map(\.id)
+                .first(where: { modelManager.isModelInstalled($0) })
+        }
+
+        guard let modelId = modelToLoad else {
+            logger.info("No installed Whisper model found on launch; waiting for user to install.")
+            DispatchQueue.main.async {
+                self.errorMessage = "Install a Whisper model to enable transcription."
+            }
+            return
+        }
+
+        logger.info("Loading Whisper model '\(modelId)' on launch")
+        loadModel(modelId)
     }
 }
 
@@ -420,7 +482,7 @@ class KeyboardMonitor: NSObject, ObservableObject {
     @Published var isEscapePressed = false
     @Published var isRecording = false
 
-    private let logger = Logger(subsystem: "com.transcryb.keyboard", category: "monitor")
+    private let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "monitor")
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private weak var hotKeyManager: HotKeyManager?
@@ -569,21 +631,19 @@ class KeyboardMonitor: NSObject, ObservableObject {
 // MARK: - Accessibility Manager
 
 final class AccessibilityManager: NSObject, ObservableObject {
-    private let logger = Logger(subsystem: "com.transcryb.accessibility", category: "manager")
+    private let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "manager")
 
     // Public API
+    /// Request Accessibility permissions - call this once at app startup
+    func requestAccessibilityPermissions() {
+        requestAXTrustIfNeeded()
+        logger.info("Requested Accessibility permissions")
+    }
+
     func insertTextAtCursor(_ text: String) {
         // Small delay so focus can settle after UI actions
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { [weak self] in
             guard let self = self else { return }
-
-            // Check if a text input field is actually focused
-            guard self.isTextInputFieldFocused() else {
-                self.logger.info("No text input field focused, skipping insertion")
-                return
-            }
-
-            self.requestAXTrustIfNeeded()
 
             if self.typeUnicode(text) {
                 self.logger.info("Inserted via Unicode typing")
@@ -593,89 +653,56 @@ final class AccessibilityManager: NSObject, ObservableObject {
         }
     }
 
-    /// Check if a text input field is currently focused
-    private func isTextInputFieldFocused() -> Bool {
-        guard let systemWideAE = AXUIElementCreateSystemWide() as AXUIElement? else {
-            return false
-        }
+    // MARK: - AX Helper Functions
 
-        var focusedElement: AnyObject?
-        let result = AXUIElementCopyAttributeValue(
-            systemWideAE,
-            kAXFocusedUIElementAttribute as CFString,
-            &focusedElement
-        )
+    /// Helper to get an attribute value from an AXUIElement
+    private func getAttributeValue(_ element: AXUIElement, _ attribute: String) -> AnyObject? {
+        var value: AnyObject?
+        let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+        return (result == .success) ? value : nil
+    }
 
-        guard result == .success else {
-            return false
-        }
-
-        let element = focusedElement as! AXUIElement
-
-        // Check if the focused element is editable
-        var isEditable: AnyObject?
-        let editResult = AXUIElementCopyAttributeValue(
-            element,
-            kAXEditableAncestorAttribute as CFString,
-            &isEditable
-        )
-
-        // If element has an editable ancestor, it's likely editable
-        if editResult == .success && isEditable != nil {
-            return true
-        }
-
-        // Also check the role of the focused element
-        var role: AnyObject?
-        let roleResult = AXUIElementCopyAttributeValue(
-            element,
-            kAXRoleAttribute as CFString,
-            &role
-        )
-
-        if roleResult == .success, let roleString = role as? NSString {
-            let editableRoles: [String] = [
-                kAXTextFieldRole as String,
-                kAXTextAreaRole as String,
-                kAXComboBoxRole as String
-            ]
-
-            for editableRole in editableRoles {
-                if roleString.isEqual(to: editableRole) {
-                    return true
-                }
-            }
-        }
-
-        return false
+    /// Helper to check if an attribute is settable
+    private func isAttributeSettable(_ element: AXUIElement, _ attribute: String) -> Bool {
+        var isSettable: DarwinBoolean = false
+        let result = AXUIElementIsAttributeSettable(element, attribute as CFString, &isSettable)
+        return (result == .success) && isSettable.boolValue
     }
 
     // MARK: - Unicode typing
 
     /// Types the full string by sending Unicode payload key events.
-    /// Splits into UTF-16 chunks to avoid IOHID payload and IME edge cases.
+    /// This version chunks at the String level to ensure Unicode safety.
     private func typeUnicode(_ text: String) -> Bool {
         guard let src = CGEventSource(stateID: .combinedSessionState) else { return false }
 
-        // Use a conservative chunk size. 120–200 UTF-16 units is typically safe.
-        // This avoids very large event payloads that some apps ignore.
-        let utf16 = Array(text.utf16)
-        let chunkSize = 160
         var ok = true
+        var remainingText = text
 
-        var i = 0
-        while i < utf16.count {
-            let end = min(i + chunkSize, utf16.count)
-            let slice = utf16[i..<end]
-            // Ensure we do not split surrogate pairs
-            let safeEnd = adjustForSurrogateSplit(utf16: utf16, start: i, proposedEnd: end)
-            let finalSlice = utf16[i..<safeEnd]
+        // Chunk by String indices, which respects Unicode grapheme/scalar boundaries.
+        // 100 characters is a safe bet, will likely be < 200 UTF-16 units.
+        let safeChunkCharacterCount = 100
 
-            if !sendUnicodeChunk(src: src, utf16Chunk: Array(finalSlice)) {
+        while !remainingText.isEmpty {
+            let chunk: String
+            if remainingText.count > safeChunkCharacterCount {
+                // Find the index for the end of the chunk
+                let chunkEndIndex = remainingText.index(remainingText.startIndex, offsetBy: safeChunkCharacterCount)
+                chunk = String(remainingText[..<chunkEndIndex])
+                // Update remainingText to be the rest of the string
+                remainingText = String(remainingText[chunkEndIndex...])
+            } else {
+                chunk = remainingText
+                remainingText = ""
+            }
+
+            // Now convert this 'safe' chunk to UTF-16 and send it
+            let utf16Chunk = Array(chunk.utf16)
+            if !sendUnicodeChunk(src: src, utf16Chunk: utf16Chunk) {
                 ok = false
                 break
             }
-            i = safeEnd
+
             // Tiny pause can improve reliability in some apps
             usleep(1_000)
         }
@@ -683,19 +710,7 @@ final class AccessibilityManager: NSObject, ObservableObject {
         return ok
     }
 
-    /// Prevent splitting a surrogate pair at the boundary.
-    private func adjustForSurrogateSplit(utf16: [UInt16], start: Int, proposedEnd: Int) -> Int {
-        guard proposedEnd < utf16.count else { return proposedEnd }
-        let last = utf16[proposedEnd - 1]
-        let next = utf16[proposedEnd]
-        // High surrogate range D800–DBFF, low surrogate DC00–DFFF
-        let isHighSurrogate = 0xD800...0xDBFF ~= last
-        let isLowSurrogate = 0xDC00...0xDFFF ~= next
-        if isHighSurrogate && isLowSurrogate {
-            return proposedEnd + 1
-        }
-        return proposedEnd
-    }
+    // NOTE: `adjustForSurrogateSplit` is no longer needed with the new `typeUnicode` logic.
 
     /// Sends a single keyDown+keyUp pair carrying the Unicode payload.
     private func sendUnicodeChunk(src: CGEventSource, utf16Chunk: [UInt16]) -> Bool {
@@ -732,7 +747,7 @@ class ModelManager: NSObject, ObservableObject, URLSessionDownloadDelegate {
     @Published var currentDownloadingModel: String?
     @Published var errorMessage: String?
 
-    private let logger = Logger(subsystem: "com.transcryb.models", category: "manager")
+    private let logger = Logger(subsystem: "michaelyang.Transcrybe", category: "manager")
     private var downloadSession: URLSession?
     private var downloadTask: URLSessionDownloadTask?
     private var downloadCompletion: ((Bool) -> Void)?
