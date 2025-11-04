@@ -13,14 +13,14 @@
       "WebFetch(domain:stackoverflow.com)",
       "Bash(git rm:*)",
       "Bash(log show --predicate 'subsystem == \"\"\"\"com.transcryb.accessibility\"\"\"\"' --last 2m --style compact)",
-      "Read(//Users/spacefarers/code/Transcrybe/Transcrybe.icon/**)",
+      "Read(//Users/spacefarers/code/Transcryb/Transcryb.icon/**)",
       "Bash(for size in 16 32 64 128 256 512)",
       "Bash(do)",
       "Bash(convert:*)",
       "Bash(done)",
       "Bash(sips:*)",
-      "Bash(SRC=\"/Users/spacefarers/Downloads/Transcrybe-iOS-Default-1024x1024@1x.png\" DST=\"/Users/spacefarers/code/Transcrybe/macos/Transcrybe/Assets.xcassets/AppIcon.appiconset\" sips -z 32 32 \"$SRC\" --out \"$DST/icon_16x16@2x.png\" sips -z 32 32 \"$SRC\" --out \"$DST/icon_32x32.png\" sips -z 64 64 \"$SRC\" --out \"$DST/icon_32x32@2x.png\" sips -z 64 64 \"$SRC\" --out \"$DST/icon_64x64.png\" sips -z 128 128 \"$SRC\" --out \"$DST/icon_64x64@2x.png\" sips -z 128 128 \"$SRC\" --out \"$DST/icon_128x128.png\" sips -z 256 256 \"$SRC\" --out \"$DST/icon_128x128@2x.png\" sips -z 256 256 \"$SRC\" --out \"$DST/icon_256x256.png\" sips -z 512 512 \"$SRC\" --out \"$DST/icon_256x256@2x.png\" sips -z 512 512 \"$SRC\" --out \"$DST/icon_512x512.png\" sips -z 1024 1024 \"$SRC\" --out \"$DST/icon_512x512@2x.png\" ls -1 \"$DST\")",
-      "Read(//Users/spacefarers/code/Transcrybe/**)"
+      "Bash(SRC=\"/Users/spacefarers/Downloads/Transcryb-iOS-Default-1024x1024@1x.png\" DST=\"/Users/spacefarers/code/Transcryb/macos/Transcryb/Assets.xcassets/AppIcon.appiconset\" sips -z 32 32 \"$SRC\" --out \"$DST/icon_16x16@2x.png\" sips -z 32 32 \"$SRC\" --out \"$DST/icon_32x32.png\" sips -z 64 64 \"$SRC\" --out \"$DST/icon_32x32@2x.png\" sips -z 64 64 \"$SRC\" --out \"$DST/icon_64x64.png\" sips -z 128 128 \"$SRC\" --out \"$DST/icon_64x64@2x.png\" sips -z 128 128 \"$SRC\" --out \"$DST/icon_128x128.png\" sips -z 256 256 \"$SRC\" --out \"$DST/icon_128x128@2x.png\" sips -z 256 256 \"$SRC\" --out \"$DST/icon_256x256.png\" sips -z 512 512 \"$SRC\" --out \"$DST/icon_256x256@2x.png\" sips -z 512 512 \"$SRC\" --out \"$DST/icon_512x512.png\" sips -z 1024 1024 \"$SRC\" --out \"$DST/icon_512x512@2x.png\" ls -1 \"$DST\")",
+      "Read(//Users/spacefarers/code/Transcryb/**)"
     ],
     "deny": [],
     "ask": []

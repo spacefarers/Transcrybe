@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Transcryb.ico</ApplicationIcon>
+    <PackageIcon>Transcryb.png</PackageIcon>
+    <StartupObject>Transcryb.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy all whisper.cpp files (exe and dlls) to output directory -->
+    <None Include="whisper.cpp\*.exe">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="whisper.cpp\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <!-- We no longer need to copy the models directory -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Transcryb.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Transcryb.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

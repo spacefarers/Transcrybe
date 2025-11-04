@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36623.8
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcryb", "Transcryb.csproj", "{A4A20A20-F504-48DF-9564-1ABDC5FD7A72}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Transcryb-win64-installer", "..\Transcryb-win64-installer\Transcryb-win64-installer.vdproj", "{3A2B31F0-B4AF-9F9D-AF34-1DA9C45ED01D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A4A20A20-F504-48DF-9564-1ABDC5FD7A72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4A20A20-F504-48DF-9564-1ABDC5FD7A72}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4A20A20-F504-48DF-9564-1ABDC5FD7A72}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4A20A20-F504-48DF-9564-1ABDC5FD7A72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A2B31F0-B4AF-9F9D-AF34-1DA9C45ED01D}.Debug|Any CPU.ActiveCfg = Debug
+		{3A2B31F0-B4AF-9F9D-AF34-1DA9C45ED01D}.Release|Any CPU.ActiveCfg = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D2C12382-E62C-4604-90EF-732536760290}
+	EndGlobalSection
+EndGlobal

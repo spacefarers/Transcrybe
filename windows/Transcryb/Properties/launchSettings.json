@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Transcryb (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Transcryb (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="Transcrybe.png" alt="Dropp Logo" width="120" height="120">
-  <h1>Transcrybe</h1>
+  <img src="Transcryb.png" alt="Dropp Logo" width="120" height="120">
+  <h1>Transcryb</h1>
   <p><strong>Fully Local Push-to-Transcribe</strong></p>
   <p>Lightweight voice transcription app that works entirely offline. Press the Function key to record, and get instant transcriptions. All processed locally on your machine. No Cloud, no Tracking, no Subscription.</p>
 </div>
@@ -33,7 +33,7 @@
 
 ## Quick Start
 
-1. Download and install Transcrybe (if the permissions requests performs weird try quitting and restarting it)
+1. Download and install Transcryb (if the permissions requests performs weird try quitting and restarting it)
 2. Grant microphone and accessibility permissions when prompted
 3. Select an input field and Press the **Function key** to start recording
 4. Release the button to stop recording
@@ -43,4 +43,4 @@
 
 ## Credits
 
-Transcrybe is powered by [**whisper.cpp**](https://github.com/ggerganov/whisper.cpp) – an amazing C++ implementation of OpenAI's Whisper that makes offline transcription blazingly fast. Big thanks to the whisper.cpp team for building such incredible infrastructure that made this project possible! 🙏
+Transcryb is powered by [**whisper.cpp**](https://github.com/ggerganov/whisper.cpp) – an amazing C++ implementation of OpenAI's Whisper that makes offline transcription blazingly fast. Big thanks to the whisper.cpp team for building such incredible infrastructure that made this project possible! 🙏
