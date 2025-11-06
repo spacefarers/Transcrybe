@@ -15,7 +15,7 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_1E241788248A45B49B3600321884B8A0"
+        "MsmKey" = "8:_81CE08767AE644C88B535211116AD91E"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -43,6 +43,22 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
+            }
         }
         "Release"
         {
@@ -59,6 +75,14 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
     }
     "Deployable"
@@ -167,7 +191,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Transcryb"
         "ProductCode" = "8:{EFB64E7A-3F22-4300-92BE-AA232661276E}"
-        "PackageCode" = "8:{9C06458F-F420-45AE-91D0-04B2190D860D}"
+        "PackageCode" = "8:{2310ACC3-5578-48D3-8878-C44F14683126}"
         "UpgradeCode" = "8:{7B49A7CD-14FE-4C90-B20F-79B5866C9A31}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
@@ -287,7 +311,7 @@
         }
         "Shortcut"
         {
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_ACA7B1D6C64544DB8120AF6AC6DB8C61"
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_F246FDBB0FED4DE8908DEBFF53949D5B"
             {
             "Name" = "8:Transcryb"
             "Arguments" = "8:"
@@ -295,7 +319,7 @@
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_1E241788248A45B49B3600321884B8A0"
+            "Target" = "8:_81CE08767AE644C88B535211116AD91E"
             "Folder" = "8:_278628189CE64C89A6D353097FD2D079"
             "WorkingFolder" = "8:_473D0A3A223A45FF9B5C97EC26B77E3F"
             "Icon" = "8:_EF42F7BD1A464C1F9F39167BDC847806"
@@ -700,10 +724,10 @@
         }
         "ProjectOutput"
         {
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_1E241788248A45B49B3600321884B8A0"
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_81CE08767AE644C88B535211116AD91E"
             {
-            "SourcePath" = "8:..\\Transcryb\\bin\\Release\\net8.0-windows\\Transcryb.exe"
-            "TargetName" = "8:Transcryb.exe"
+            "SourcePath" = "8:..\\Transcryb\\obj\\Debug\\net8.0-windows\\apphost.exe"
+            "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_473D0A3A223A45FF9B5C97EC26B77E3F"
             "Condition" = "8:"
@@ -721,7 +745,7 @@
             "IsolateTo" = "8:"
             "ProjectOutputGroupRegister" = "3:1"
             "OutputConfiguration" = "8:"
-            "OutputGroupCanonicalName" = "8:Built"
+            "OutputGroupCanonicalName" = "8:PublishItems"
             "OutputProjectGuid" = "8:{A4A20A20-F504-48DF-9564-1ABDC5FD7A72}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"

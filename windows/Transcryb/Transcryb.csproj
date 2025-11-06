@@ -28,7 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Transcryb.ico" />
+    <Content Include="Transcryb.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
