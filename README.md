@@ -3,6 +3,15 @@
   <h1>Transcryb</h1>
   <p><strong>Fully Local Push-to-Transcribe</strong></p>
   <p>Lightweight voice transcription app that works entirely offline. Press the Function key to record, and get instant transcriptions. All processed locally on your machine. No Cloud, no Tracking, no Subscription.</p>
+
+  <p>
+    <a href="https://github.com/spacefarers/Transcryb/releases/download/v1.1/Transcryb-macOS.dmg">
+      <img src="https://img.shields.io/badge/Download-macOS-blue?style=for-the-badge" alt="Download macOS">
+    </a>
+    <a href="https://github.com/spacefarers/Transcryb/releases/download/v1.1/Transcryb-win64.msi">
+      <img src="https://img.shields.io/badge/Download-Windows-0078d4?style=for-the-badge" alt="Download Windows">
+    </a>
+  </p>
 </div>
 
 ## Key Features
@@ -21,23 +30,24 @@
 
 ---
 
-## Usage Guide
+## Platform Support
 
-- **macOS** 14.6+ (Somona onwards) (native support)
-- **Windows** app is under development (just starting), contributions welcome!
-- Model file need to be constantly stored in memory for fast transcription, will take (40MB, 140MB, or 440MB depending on the model you choose)
-- Use the menu bar item to launch settings panel or quit the app.
-- Microphone access
+- **macOS** 14.6+ (Sonoma onwards) – Press **Function key** to record
+- **Windows** – Press **Control + Windows key** to record
+- Model file needs to be constantly stored in memory for fast transcription (40MB, 140MB, or 440MB depending on the model you choose)
+- Microphone access required
 
 ---
 
 ## Quick Start
 
-1. Download and install Transcryb (if the permissions requests performs weird try quitting and restarting it)
+1. Download and install Transcryb (if permission requests perform unexpectedly, try quitting and restarting)
 2. Grant microphone and accessibility permissions when prompted
-3. Select an input field and Press the **Function key** to start recording
-4. Release the button to stop recording
-5. Done! You should see the text in your selected input field.
+3. Select an input field and press your platform's hotkey to start recording:
+   - **macOS**: Function key
+   - **Windows**: Control + Windows key
+4. Release to stop recording
+5. Done! Your transcription will appear in the selected input field
 
 ---
 
