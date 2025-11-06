@@ -19,7 +19,7 @@
 - **100% Local** – All transcription happens on your device. Your voice data never touches the internet
 - **One-Key Recording** – Press the Function key to start/stop recording from anywhere
 - **Instant Results** – Get transcriptions in less than 1 second
-- **Completely Free and Open Source**** – No monthly quotas, no subscription, just FOSS.
+- **Completely Free and Open Source** – No monthly quotas, no subscription, just FOSS.
 - **Simple & Fast** – Lightweight, minimal UI, maximum efficiency
 
 ---
